@@ -10,25 +10,29 @@ if TYPE_CHECKING:
 
 
 class Client:
-    def __init__(self,
-                 address: str,
-                 created_at: str,
-                 enabled: bool,
-                 uid: str,
-                 last_handshake_at: str,
-                 name: str,
-                 persistent_keepalive: str,
-                 public_key: str,
-                 transfer_rx: int,
-                 transfer_tx: int,
-                 updated_at: str,
-                 session: aiohttp.ClientSession,
-                 server: 'Server', ):
+    def __init__(
+        self,
+        address: str,
+        created_at: str,
+        enabled: bool,
+        uid: str,
+        last_handshake_at: str,
+        name: str,
+        persistent_keepalive: str,
+        public_key: str,
+        transfer_rx: int,
+        transfer_tx: int,
+        updated_at: str,
+        session: aiohttp.ClientSession,
+        server: 'Server',
+    ):
         self._address = address
         self._created_at = datetime.strptime(created_at, time_format)
         self._enabled = bool(enabled)
         self._uid = uid
-        self._last_handshake_at = datetime.strptime(last_handshake_at, time_format) if last_handshake_at else None
+        self._last_handshake_at = (
+            datetime.strptime(last_handshake_at, time_format) if last_handshake_at else None
+        )
         self._name = name
         self._persistent_keepalive = persistent_keepalive
         self._public_key = public_key
@@ -62,11 +66,18 @@ class Client:
 
     @name.setter
     async def name(self, value):
-        await self._session.put(
-            self._server.url_builder("/api/wireguard/client/{}/name".format(self._uid)),
-            json={"name": value}
-        )
-        self._name = value
+        async with self._session.put(
+            self._server.url_builder(f"/api/wireguard/client/{self._uid}/name"),
+            json={"name": value},
+        ) as response:
+            if response.status != 200:
+                try:
+                    json_response = await response.json()
+                    error_message = json_response.get("error", "Неизвестная ошибка при обновлении имени клиента.")
+                except aiohttp.ContentTypeError:
+                    error_message = await response.text()
+                raise Exception(f"Ошибка при обновлении имени клиента: {error_message}")
+            self._name = value
 
     @property
     def address(self):
@@ -74,11 +85,18 @@ class Client:
 
     @address.setter
     async def address(self, value):
-        await self._session.put(
-            self._server.url_builder("/api/wireguard/client/{}/address".format(self._uid)),
-            json={"address": value}
-        )
-        self._address = value
+        async with self._session.put(
+            self._server.url_builder(f"/api/wireguard/client/{self._uid}/address"),
+            json={"address": value},
+        ) as response:
+            if response.status != 200:
+                try:
+                    json_response = await response.json()
+                    error_message = json_response.get("error", "Неизвестная ошибка при обновлении адреса клиента.")
+                except aiohttp.ContentTypeError:
+                    error_message = await response.text()
+                raise Exception(f"Ошибка при обновлении адреса клиента: {error_message}")
+            self._address = value
 
     @property
     def created_at(self):
@@ -119,28 +137,60 @@ class Client:
     async def enable(self):
         if self._enabled:
             raise ValueError("Client is already enabled")
-        await self._session.post(
-            self._server.url_builder("/api/wireguard/client/{}/enable".format(self._uid)),
-            json={"enable": True}
-        )
-        self._enabled = True
+        async with self._session.post(
+            self._server.url_builder(f"/api/wireguard/client/{self._uid}/enable"),
+            json={"enable": True},
+        ) as response:
+            if response.status != 200:
+                try:
+                    json_response = await response.json()
+                    error_message = json_response.get("error", "Неизвестная ошибка при включении клиента.")
+                except aiohttp.ContentTypeError:
+                    error_message = await response.text()
+                raise Exception(f"Ошибка при включении клиента: {error_message}")
+            self._enabled = True
 
     async def disable(self):
         if not self._enabled:
             raise ValueError("Client is already disabled")
-        await self._session.post(
-            self._server.url_builder("/api/wireguard/client/{}/disable".format(self._uid)),
-        )
-        self._enabled = False
+        async with self._session.post(
+            self._server.url_builder(f"/api/wireguard/client/{self._uid}/disable"),
+        ) as response:
+            if response.status != 200:
+                try:
+                    json_response = await response.json()
+                    error_message = json_response.get("error", "Неизвестная ошибка при отключении клиента.")
+                except aiohttp.ContentTypeError:
+                    error_message = await response.text()
+                raise Exception(f"Ошибка при отключении клиента: {error_message}")
+            self._enabled = False
 
-    async def get_qr_code(self):
-        return await self._session.get(
-            self._server.url_builder("/api/wireguard/client/{}/qrcode.svg".format(self._uid))
-        )
+    async def get_qr_code(self) -> str:
+        """Возвращает SVG-код QR в виде строки."""
+        async with self._session.get(
+            self._server.url_builder(f"/api/wireguard/client/{self._uid}/qrcode.svg")
+        ) as response:
+            if response.status != 200:
+                try:
+                    json_response = await response.json()
+                    error_message = json_response.get("error", "Неизвестная ошибка при получении QR-кода.")
+                except aiohttp.ContentTypeError:
+                    error_message = await response.text()
+                raise Exception(f"Ошибка при получении QR-кода: {error_message}")
+            svg_content = await response.text()
+            return svg_content
 
-    async def get_configuration(self):
-        config_file = await self._session.get(
-            self._server.url_builder("/api/wireguard/client/{}/configuration".format(self._uid))
-        )
-        # вернуть как текст
-        return await config_file.text()
+    async def get_configuration(self) -> str:
+        """Возвращает конфигурацию клиента (строкой)."""
+        async with self._session.get(
+            self._server.url_builder(f"/api/wireguard/client/{self._uid}/configuration")
+        ) as config_file:
+            if config_file.status != 200:
+                try:
+                    json_response = await config_file.json()
+                    error_message = json_response.get("error", "Неизвестная ошибка при получении конфигурации.")
+                except aiohttp.ContentTypeError:
+                    error_message = await config_file.text()
+                raise Exception(f"Ошибка при получении конфигурации: {error_message}")
+            config_text = await config_file.text()
+            return config_text

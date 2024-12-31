@@ -1,38 +1,38 @@
-# wg-easy-api-wrapper
-Python module for convenient interaction with the application API [wg-easy](https://github.com/wg-easy/wg-easy)
+# WG-Easy API Wrapper
 
-You can see all the methods in the documentation on [GitHub Pages](https://shandeika.github.io/wg-easy-api-wrapper/)
+A Command-Line Interface (CLI) tool for managing WireGuard clients via the WG-Easy API.
 
-## Usage
-A quick example of creating a client:
-```python
-import asyncio
+## Table of Contents
 
-from wg_easy_api_wrapper import Server
+- [Features](#features)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+  - [Create a Client](#create-a-client)
+  - [Delete a Client](#delete-a-client)
+  - [List Clients](#list-clients)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
+## Features
 
-async def main():
-    async with Server("http://wg.example.com:51821", "SuPerSecret_pass") as server:
-        await server.create_client("client_name")
+- **Create WireGuard Clients**: Easily add new clients to your WireGuard server.
+- **Delete Clients**: Remove existing clients when they're no longer needed.
+- **List Clients**: View all active clients with their details.
+- **Automated Configuration**: Generates configuration files and QR codes for clients.
 
+## Installation
 
-asyncio.run(main())
-```
-Or a slightly more complicated way:
-```python
-import asyncio
+### Prerequisites
 
-import aiohttp
+- Python 3.7 or higher
+- [WG-Easy](https://wg-easy.github.io/wg-easy/) server up and running
+- Access credentials for the WG-Easy API
 
-from wg_easy_api_wrapper import Server
+### Using `pip`
 
+You can install the CLI tool using `pip`:
 
-async def main():
-    async with aiohttp.ClientSession() as session:
-        server = Server("http://wg.example.com:51821", "SuPerSecret_pass", session)
-        await server.login()
-        await server.create_client("client_name")
-
-
-asyncio.run(main())
-```
+```bash
+pip install wg-easy-api-wrapper
